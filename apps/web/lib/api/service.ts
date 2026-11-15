@@ -727,9 +727,9 @@ export function createService(deps: Deps, now: () => number = Date.now) {
   }
 
   /**
-   * Solana's one speed, Standard. To Stellar: no fee from anyone, so the recipient gets it all, from
-   * 1 USDC (what the relayer completes). To an EVM chain: Circle's delivery fee only, priced as
-   * every direct EVM route is, plus Xebra's flat fee paid in the burn's own transaction.
+   * Solana's one speed, Standard. To Stellar: no Circle fee, a burn of at least 1 USDC (what the
+   * relayer completes). To an EVM chain: Circle's delivery fee, priced as every direct EVM route
+   * is. Either way Xebra's flat fee, paid in the burn's own transaction.
    */
   async function solanaOptions(
     to: DestId,
