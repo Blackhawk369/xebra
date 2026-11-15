@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Hex } from "viem";
 import { ensureChain, sendTransaction, waitForReceipt } from "../../lib/evm-rpc";
 import { reportError } from "../../lib/format-error";
+import { claimOnStellar } from "../../lib/sui-stellar/claim-client";
 import { Button } from "../ui/button";
 import { DataRow } from "../ui/data-row";
 import { Field, Input } from "../ui/field";
@@ -44,7 +45,9 @@ export function EvmStellarPanel({
   source: EvmChain;
   onBusyChange?: (busy: boolean) => void;
 }) {
-  const { connections, open: openWallets } = useWallets();
+  const { connections, stellarKit, open: openWallets } = useWallets();
+  const stellarAddress = connections.stellar?.address ?? null;
+  const [claiming, setClaiming] = useState(false);
   const wallet = connections.evm ?? null;
   const client = useMemo(
     () =>
@@ -213,19 +216,39 @@ export function EvmStellarPanel({
           {delivery.kind === "done"
             ? "The USDC is in the recipient's Stellar account."
             : delivery.kind === "stuck"
-              ? `${delivery.message} The USDC is not lost: anyone holding Circle's attestation can complete the mint, and you can do it yourself at /claim.`
+              ? `${delivery.message} The USDC is not lost: anyone holding Circle's attestation can complete the mint, and you can do it from a Stellar wallet for a few hundredths of an XLM.`
               : STANDARD_ETA}
         </Notice>
         <InsetTray className="py-3">
           <span className="tabular block truncate font-mono text-xs text-bone/45">{sent.tx}</span>
         </InsetTray>
         {delivery.kind === "stuck" && (
-          <a
-            className="text-sm text-bone/70 underline underline-offset-4 hover:text-bone"
-            href={`/claim?tx=${sent.tx}&src=${source.cctpDomainId}`}
+          <Button
+            size="lg"
+            disabled={claiming}
+            onClick={async () => {
+              if (!stellarAddress || !stellarKit) {
+                openWallets(["stellar"]);
+                return;
+              }
+              setClaiming(true);
+              try {
+                const r = await claimOnStellar(stellarKit, stellarAddress, sent.tx, {
+                  url: `/api/stellar-inbound/claim?src=${source.cctpDomainId}`,
+                  key: "tx",
+                });
+                setDelivery({ kind: "done", hash: r.hash || null });
+              } catch (err) {
+                setDelivery({ kind: "stuck", message: reportError("stellar claim failed", err) });
+              } finally {
+                setClaiming(false);
+              }
+            }}
           >
-            Complete it yourself
-          </a>
+            {stellarAddress
+              ? "Complete it from your Stellar wallet"
+              : "Connect a Stellar wallet to complete it"}
+          </Button>
         )}
       </div>
     );
