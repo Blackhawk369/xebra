@@ -32,6 +32,13 @@ export type Chain =
   | "sei"
   | "xdc"
   | "hyperevm"
+  | "ethereum"
+  | "linea"
+  | "plume"
+  | "edge"
+  | "cronos"
+  | "plasma"
+  | "xlayer"
   | "ink";
 
 const SRC: Record<Chain, string> = {
@@ -53,6 +60,13 @@ const SRC: Record<Chain, string> = {
   sei: "/chains/sei.png",
   xdc: "/chains/xdc.png",
   hyperevm: "/chains/hyperevm.png",
+  ethereum: "/chains/ethereum.png",
+  linea: "/chains/linea.png",
+  plume: "/chains/plume.png",
+  edge: "/chains/edge.png",
+  cronos: "/chains/cronos.png",
+  plasma: "/chains/plasma.png",
+  xlayer: "/chains/xlayer.png",
   ink: "/chains/ink.png",
 };
 
@@ -93,5 +107,12 @@ export const CHAIN_NAMES: Record<Chain, string> = {
   sei: "Sei",
   xdc: "XDC",
   hyperevm: "HyperEVM",
+  ethereum: "Ethereum",
+  linea: "Linea",
+  plume: "Plume",
+  edge: "EDGE",
+  cronos: "Cronos",
+  plasma: "Plasma",
+  xlayer: "X Layer",
   ink: "Ink",
 };

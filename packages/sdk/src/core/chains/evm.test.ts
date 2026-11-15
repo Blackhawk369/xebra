@@ -163,7 +163,7 @@ describe("the route lists", () => {
     expect(parseArcSendsTo("base, arbitrum")).toEqual(["arbitrum", "base"]);
     expect(parseArcSendsTo("solana,unichain")).toEqual(["unichain", "solana"]);
     expect(parseArcSendsTo("all")).toEqual(ARC_PEERS);
-    expect(ARC_PEERS).toHaveLength(15);
+    expect(ARC_PEERS).toHaveLength(22);
     expect(parseArcReceivesFrom("all")).toEqual(EVM_ARC_PEERS);
   });
 
@@ -174,9 +174,10 @@ describe("the route lists", () => {
     );
   });
 
-  it("fail loudly on a name they do not know, on Arc, and on the chains left out", () => {
-    for (const left of ["ethereum", "linea", "plume", "edge"]) {
-      expect(() => parseArcSendsTo(left)).toThrow(`NEXT_PUBLIC_ARC_SENDS_TO names "${left}"`);
+  it("fail loudly on a name they do not know, and on Arc", () => {
+    // Ethereum, Linea, Plume and EDGE were left out until 2026-11-15; now they are chains like any.
+    for (const back of ["ethereum", "linea", "plume", "edge"]) {
+      expect(parseArcSendsTo(back)).toEqual([back]);
     }
     expect(() => parseArcSendsTo("base,bsae")).toThrow('names "bsae"');
     expect(() => parseArcSendsTo("arc")).toThrow('names "arc"');
@@ -187,7 +188,7 @@ describe("the route lists", () => {
     expect(parseStellarSendsTo(undefined)).toEqual([]);
     expect(parseStellarSendsTo("all")).toEqual(EVM_ARC_PEERS);
     expect(parseStellarSendsTo("ink, base")).toEqual(["base", "ink"]);
-    for (const other of ["arc", "solana", "ethereum"]) {
+    for (const other of ["arc", "solana", "injective"]) {
       expect(() => parseStellarSendsTo(other)).toThrow(
         `NEXT_PUBLIC_STELLAR_SENDS_TO names "${other}"`,
       );

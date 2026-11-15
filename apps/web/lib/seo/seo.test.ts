@@ -42,8 +42,8 @@ describe("which routes get a page", () => {
     const slugs = offeredRoutes(LIVE, PRODUCTION).map((r) => r.slug);
     expect(slugs.slice(0, 2)).toEqual(["stellar-to-solana", "stellar-to-arc"]);
     expect(slugs).not.toContain("stellar-to-base");
-    expect(slugs.filter((s) => s.startsWith("arc-to-"))).toHaveLength(15);
-    expect(slugs).toHaveLength(17);
+    expect(slugs.filter((s) => s.startsWith("arc-to-"))).toHaveLength(22);
+    expect(slugs).toHaveLength(24);
   });
 
   it("adds a Stellar chain once the wrapper commits it, at the committed cap", () => {
@@ -80,7 +80,7 @@ describe("which routes get a page", () => {
     for (const r of offeredRoutes(new Map([...LIVE, [6, cfg(2_500_000n)]]), PRODUCTION)) {
       expect(candidateSlugs()).toContain(r.slug);
     }
-    expect(parseSlug("stellar-to-ethereum")).toBeNull();
+    expect(parseSlug("stellar-to-injective")).toBeNull();
   });
 });
 

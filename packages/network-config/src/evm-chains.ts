@@ -58,6 +58,13 @@ export type EvmChainId =
   | "xdc"
   | "hyperevm"
   | "ink"
+  | "ethereum"
+  | "linea"
+  | "plume"
+  | "edge"
+  | "cronos"
+  | "plasma"
+  | "xlayer"
   | "arc";
 
 export interface EvmChain {
@@ -318,6 +325,114 @@ export const EVM_CHAINS: Record<EvmChainId, EvmChain> = {
     standardEta: "about 30 minutes",
   },
   // Built from the preset, so Arc has one source of truth however it is reached.
+  ethereum: {
+    id: "ethereum",
+    name: "Ethereum",
+    chainId: 1,
+    cctpDomainId: CCTP_DOMAIN.ethereum,
+    usdcAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    ...CIRCLE,
+    rpcUrl: "https://ethereum-rpc.publicnode.com",
+    explorerUrl: "https://etherscan.io",
+    nativeCurrency: ETH,
+    fast: true,
+    maxForwardFeeUnits: 2_500_000,
+    claimCost: "ETH on Ethereum for gas, often more than a dollar",
+    standardEta: "15 to 20 minutes",
+  },
+  linea: {
+    id: "linea",
+    name: "Linea",
+    chainId: 59144,
+    cctpDomainId: CCTP_DOMAIN.linea,
+    usdcAddress: "0x176211869cA2b568f2A7D4EE941E073a821EE1ff",
+    ...CIRCLE,
+    rpcUrl: "https://rpc.linea.build",
+    explorerUrl: "https://lineascan.build",
+    nativeCurrency: ETH,
+    fast: true,
+    maxForwardFeeUnits: 500_000,
+    claimCost: "a little ETH on Linea for gas",
+    standardEta: "6 to 32 hours (Linea's finality); Fast takes seconds",
+  },
+  plume: {
+    id: "plume",
+    name: "Plume",
+    chainId: 98866,
+    cctpDomainId: CCTP_DOMAIN.plume,
+    usdcAddress: "0x222365EF19F7947e5484218551B56bb3965Aa7aF",
+    ...CIRCLE,
+    rpcUrl: "https://rpc.plume.org",
+    explorerUrl: "https://explorer.plume.org",
+    nativeCurrency: { name: "Plume", symbol: "PLUME", decimals: 18 },
+    fast: true,
+    maxForwardFeeUnits: 500_000,
+    claimCost: "a little PLUME for gas",
+    standardEta: "15 to 20 minutes",
+  },
+  edge: {
+    id: "edge",
+    name: "EDGE",
+    chainId: 3343,
+    cctpDomainId: CCTP_DOMAIN.edge,
+    usdcAddress: "0x98d2919b9A214E6Fa5384AC81E6864bA686Ad74c",
+    // EDGE has its own deployment of Circle's contracts, not the address every other chain shares.
+    tokenMessengerAddress: "0x98706A006bc632Df31CAdFCBD43F38887ce2ca5c",
+    messageTransmitterAddress: "0x5b61381Fc9e58E70EfC13a4A97516997019198ee",
+    tokenMinterAddress: "0x338Dfd607855BeEc17f33e539Ac2479853cC8384",
+    rpcUrl: "https://edge-mainnet.g.alchemy.com/public",
+    explorerUrl: "https://edge-mainnet.explorer.alchemy.com",
+    nativeCurrency: ETH,
+    fast: true,
+    maxForwardFeeUnits: 500_000,
+    claimCost: "a little ETH on EDGE for gas",
+    standardEta: "15 to 20 minutes",
+  },
+  cronos: {
+    id: "cronos",
+    name: "Cronos",
+    chainId: 25,
+    cctpDomainId: CCTP_DOMAIN.cronos,
+    usdcAddress: "0x3D7F2C478aAfdB65542BCB44bCeeC05849999d2D",
+    ...CIRCLE,
+    rpcUrl: "https://evm.cronos.org",
+    explorerUrl: "https://explorer.cronos.org",
+    nativeCurrency: { name: "Cronos", symbol: "CRO", decimals: 18 },
+    fast: false,
+    maxForwardFeeUnits: 500_000,
+    claimCost: "a little CRO for gas",
+    standardEta: "under a minute",
+  },
+  plasma: {
+    id: "plasma",
+    name: "Plasma",
+    chainId: 9745,
+    cctpDomainId: CCTP_DOMAIN.plasma,
+    usdcAddress: "0x2d661C89D812261039AF9764eceaAee884f5F67F",
+    ...CIRCLE,
+    rpcUrl: "https://rpc.plasma.to",
+    explorerUrl: "https://plasmascan.to",
+    nativeCurrency: { name: "Plasma", symbol: "XPL", decimals: 18 },
+    fast: false,
+    maxForwardFeeUnits: 500_000,
+    claimCost: "a little XPL for gas",
+    standardEta: "under a minute",
+  },
+  xlayer: {
+    id: "xlayer",
+    name: "X Layer",
+    chainId: 196,
+    cctpDomainId: CCTP_DOMAIN.xlayer,
+    usdcAddress: "0xB6CEceAB302E2E4948951eE7843FC24E92933061",
+    ...CIRCLE,
+    rpcUrl: "https://rpc.xlayer.tech",
+    explorerUrl: "https://www.oklink.com/xlayer",
+    nativeCurrency: { name: "OKB", symbol: "OKB", decimals: 18 },
+    fast: true,
+    maxForwardFeeUnits: 500_000,
+    claimCost: "a little OKB for gas",
+    standardEta: "15 to 20 minutes",
+  },
   arc: {
     id: "arc",
     name: "Arc",

@@ -468,6 +468,13 @@
           "xdc",
           "hyperevm",
           "ink",
+          "ethereum",
+          "linea",
+          "plume",
+          "edge",
+          "cronos",
+          "plasma",
+          "xlayer",
           "arc"
         ],
         "description": "A chain, as the API names it.",

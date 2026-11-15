@@ -183,7 +183,7 @@ describe("SOLANA_SENDS_TO", () => {
     }
   });
   it("names chains, ignores unknown ones, and keeps table order", () => {
-    const s = parseSolanaSendsTo(" Arc, base ,solana,ethereum ");
+    const s = parseSolanaSendsTo(" Arc, base ,solana,injective ");
     expect(s.evm.map((c) => c.id)).toEqual(["base", "arc"]);
     expect(s.stellar).toBe(false);
   });
