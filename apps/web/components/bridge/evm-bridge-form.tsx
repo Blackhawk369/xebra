@@ -13,6 +13,7 @@ import {
   checkSolanaAddress,
   evmDestinationsFrom,
   explorerTxUrl,
+  flatFeeFor,
   formatUsdc6,
   parseUsdc6,
   planEvmFee,
@@ -293,7 +294,13 @@ export function EvmBridgeForm({
     ): FeePlan | null => {
       const feeDest = feeDestination(destination, opening);
       if (!wrapperAddress)
-        return planEvmFee({ amount: value, tier: feeTier, destination: feeDest });
+        // Straight to Circle: Xebra's flat fee comes out of the amount, paid after the burn.
+        return planEvmFee({
+          amount: value,
+          tier: feeTier,
+          destination: feeDest,
+          xebraFee: flatFeeFor(destination.cctpDomainId),
+        });
       if (!settings) return null;
       return planWrapperFee({
         amount: value,
@@ -458,7 +465,9 @@ export function EvmBridgeForm({
         createAccountFor: opening ? bytesToHex(recipientCheck.bytes) : undefined,
       };
     }
-    const priceNow = async (): Promise<{ tier: FeeTier; maxFee: bigint; fee: bigint } | string> => {
+    const priceNow = async (): Promise<
+      { tier: FeeTier; maxFee: bigint; fee: bigint; burn: bigint; xebraFee: bigint } | string
+    > => {
       // Through the wrapper its settings are read again too: a pause or a lowered cap is instant.
       const settings = wrapperAddress ? await getWrapperSettings(source.cctpDomainId) : undefined;
       if (wrapperAddress) {
@@ -479,7 +488,13 @@ export function EvmBridgeForm({
       const latest = planFor(amount, freshTier, destination, opening, settings);
       if (!latest) return `We could not read Xebra's contract on ${source.name} just now.`;
       return latest.ok
-        ? { tier: freshTier, maxFee: latest.maxFee, fee: latest.fee }
+        ? {
+            tier: freshTier,
+            maxFee: latest.maxFee,
+            fee: latest.fee,
+            burn: latest.burn,
+            xebraFee: latest.xebraFee,
+          }
         : latest.reason;
     };
 
@@ -507,10 +522,16 @@ export function EvmBridgeForm({
         source,
         destination,
         recipient,
-        amount,
+        // The burn: through the wrapper the whole amount, straight to Circle the amount less
+        // Xebra's flat fee, which is sent next to Xebra's fee address.
+        amount: priced.burn,
         maxFee: priced.maxFee,
         finality: priced.tier.finalityThreshold,
         via: wrapperAddress ? { address: wrapperAddress, maxWrapperFee: priced.fee } : null,
+        xebraFee:
+          !wrapperAddress && priced.xebraFee > 0n && env.feeAddresses.evm
+            ? { address: env.feeAddresses.evm, amount: priced.xebraFee }
+            : null,
         onStep: (s) => setStep(EVM_STEP_LABEL[s](source.name)),
         // An approval can take minutes on a busy chain; the fee is asked for again after it.
         currentMaxFee: async () => {
