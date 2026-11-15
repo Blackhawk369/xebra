@@ -28,6 +28,8 @@ export function solanaConnection(): Connection {
 export async function priceSolanaToEvm(
   chain: EvmChain,
   amount: bigint,
+  /** Xebra's flat fee, out of `amount`. */
+  xebraFee = 0n,
 ): Promise<Extract<FeePlan, { ok: true }>> {
   const health = await checkCircle({
     baseUrl: irisBaseUrl(),
@@ -45,7 +47,7 @@ export async function priceSolanaToEvm(
       "upstream_unavailable",
     );
   }
-  const plan = planEvmFee({ amount, tier, destination: chain });
+  const plan = planEvmFee({ amount, tier, destination: chain, xebraFee });
   if (!plan.ok) {
     throw new SolanaSourceError(
       plan.reason,
