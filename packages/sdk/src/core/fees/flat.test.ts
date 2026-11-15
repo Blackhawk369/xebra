@@ -4,7 +4,9 @@ import { CLAIM_ONLY_DOMAINS, XEBRA_FLAT_FEE, flatFeeFor, flatFeeKind } from "./f
 describe("flat fee", () => {
   it("is 0.10 where the transfer arrives by itself, 0.05 where it is claimed", () => {
     expect(XEBRA_FLAT_FEE).toEqual({ deliver: 100_000n, claim: 50_000n });
-    for (const delivered of [0, 1, 2, 3, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 18, 19, 21, 22, 26, 27, 28, 32, 33, 37]) {
+    for (const delivered of [
+      0, 1, 2, 3, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 18, 19, 21, 22, 26, 27, 28, 32, 33, 37,
+    ]) {
       expect(flatFeeKind(delivered)).toBe("deliver");
       expect(flatFeeFor(delivered)).toBe(100_000n);
     }

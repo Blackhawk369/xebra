@@ -68,14 +68,25 @@ describe("planEvmFee", () => {
   it("counts the flat fee in the one-tenth rule, and its minimum agrees with the plan", () => {
     const min = minimumEvmAmount(STANDARD, 100_000n);
     expect(min).toBeGreaterThan(minimumEvmAmount(STANDARD));
-    expect(planEvmFee({ amount: min, tier: STANDARD, destination: ARC, xebraFee: 100_000n }).ok).toBe(true);
-    const below = planEvmFee({ amount: min - 1n, tier: STANDARD, destination: ARC, xebraFee: 100_000n });
+    expect(
+      planEvmFee({ amount: min, tier: STANDARD, destination: ARC, xebraFee: 100_000n }).ok,
+    ).toBe(true);
+    const below = planEvmFee({
+      amount: min - 1n,
+      tier: STANDARD,
+      destination: ARC,
+      xebraFee: 100_000n,
+    });
     expect(below).toMatchObject({ ok: false, kind: "minimum" });
   });
 
   it("refuses an amount the flat fee alone would swallow", () => {
-    expect(planEvmFee({ amount: 100_000n, tier: STANDARD, destination: ARC, xebraFee: 100_000n }).ok).toBe(false);
-    expect(() => planEvmFee({ amount: 1n, tier: STANDARD, destination: ARC, xebraFee: -1n })).toThrow();
+    expect(
+      planEvmFee({ amount: 100_000n, tier: STANDARD, destination: ARC, xebraFee: 100_000n }).ok,
+    ).toBe(false);
+    expect(() =>
+      planEvmFee({ amount: 1n, tier: STANDARD, destination: ARC, xebraFee: -1n }),
+    ).toThrow();
   });
 
   it("adds the speed fee for Fast", () => {
