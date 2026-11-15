@@ -122,13 +122,25 @@ describe("the written pages", () => {
     }
   });
 
-  it("say there is no Xebra fee from Arc until the wrapper is switched on, and the fee after", () => {
+  it("say Xebra's flat fee from Arc until the wrapper is switched on, and the wrapper's fee after", () => {
     const direct = docs.find((d) => d.path === "/bridge/arc-to-base");
-    expect(direct?.markdown).toContain("None: you pay Circle's delivery fee only");
+    expect(direct?.markdown).toContain("0.10 USDC flat");
+    expect(direct?.markdown).not.toContain("None: you pay Circle's delivery fee only");
     const wrapped = buildDocs(offeredRoutes(LIVE, { ...PRODUCTION, useWrapper: true }), true).find(
       (d) => d.path === "/bridge/arc-to-base",
     );
     expect(wrapped?.markdown).toContain("0.05% of the amount, at least 0.10 USDC");
+  });
+
+  it("describe an EVM chain to Stellar as relayed, with no Circle fee", () => {
+    const routes = offeredRoutes(LIVE, {
+      ...PRODUCTION,
+      evmRoutes: { ...PRODUCTION.evmRoutes, evmToStellar: ["base"] },
+    });
+    const page = buildDocs(routes, false).find((d) => d.path === "/bridge/base-to-stellar");
+    expect(page?.markdown).toContain("Circle does not deliver into Stellar");
+    expect(page?.markdown).toContain("From 1.10 USDC");
+    expect(page?.markdown).toContain("USDC trustline");
   });
 
   it("are all listed in llms.txt, and all in llms-full.txt", () => {

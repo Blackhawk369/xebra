@@ -8,6 +8,7 @@ import {
   SOLANA_FROM_ARC,
   XEBRA_WRAPPERS,
   evmDestinationsFrom,
+  evmSendsToStellar,
   evmSources,
   stellarDestinations,
 } from "@xebra/sdk/core";
@@ -31,7 +32,7 @@ export interface RouteInfo {
   from: Endpoint;
   to: Endpoint;
   /** Through Xebra's Stellar wrapper, Xebra's EVM wrapper, or straight to Circle. */
-  via: "stellar-wrapper" | "evm-wrapper" | "circle";
+  via: "stellar-wrapper" | "evm-wrapper" | "circle" | "stellar-relayer";
   /** The most Circle may be paid to deliver, in USDC units (6 decimals). */
   deliveryCapUnits: number;
   /** The same when Circle also opens the recipient's Solana account; null where not offered. */
@@ -109,6 +110,17 @@ export function offeredRoutes(
         deliveryCapNewAccountUnits: toSolana ? SOLANA_FROM_ARC.maxForwardFeeNewAccountUnits : null,
       });
     }
+    // Into Stellar Circle delivers nothing and is paid nothing; Xebra's relayer completes it.
+    if (evmSendsToStellar(source, flags.evmRoutes)) {
+      routes.push({
+        slug: routeSlug(source, "stellar"),
+        from: source,
+        to: "stellar",
+        via: "stellar-relayer",
+        deliveryCapUnits: 0,
+        deliveryCapNewAccountUnits: null,
+      });
+    }
   }
   return routes;
 }
@@ -128,6 +140,7 @@ export function candidateSlugs(): string[] {
     routeSlug("arc", "solana"),
     ...evm.map((id) => routeSlug(id, "arc")),
     ...evm.map((id) => routeSlug(id, "solana")),
+    ...EVM_CHAIN_IDS.map((id) => routeSlug(id, "stellar")),
   ];
 }
 
