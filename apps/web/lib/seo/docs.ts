@@ -365,7 +365,7 @@ Send USDC from ${from} to ${to} with Xebra. Circle burns it on ${from} and mints
 | Circle's delivery fee | ${circleRow} |
 | Amount | ${limits} |
 | Speed | ${relayed ? "Usually 15 to 20 minutes: Circle attests once the chain has finalised the burn" : `Usually a few minutes${evmSource?.fast ? "; Fast transfers are offered for a small extra fee" : ""}`} |
-| If it gets stuck | ${claimed ? `It never arrives by itself: claim it at [claim](/claim) once Circle attests` : "Claim it yourself at [claim](/claim)"} |
+| If it gets stuck | ${claimed ? "It never arrives by itself: claim it at [claim](/claim) once Circle attests" : "Claim it yourself at [claim](/claim)"} |
 
 ## How to send
 
