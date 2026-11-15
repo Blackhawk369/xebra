@@ -118,6 +118,8 @@ export async function buildSolanaSourceBurn(p: {
   amount: bigint;
   target: SolanaBurnTarget;
   maxFee: bigint;
+  /** Xebra's flat fee, to `owner`'s USDC account in the same transaction as the burn. */
+  fee?: { owner: string; amount: bigint };
   connection?: Connection;
 }): Promise<BuiltSolanaBurn> {
   let params: ReturnType<typeof solanaBurnParams>;
@@ -134,6 +136,7 @@ export async function buildSolanaSourceBurn(p: {
     return await buildSolanaBurnTransaction(p.connection ?? solanaConnection(), {
       owner: new PublicKey(p.sender),
       params,
+      ...(p.fee ? { fee: { owner: new PublicKey(p.fee.owner), amount: p.fee.amount } } : {}),
     });
   } catch (err) {
     if (err instanceof InsufficientSolanaUsdcError) {

@@ -109,6 +109,7 @@ export const liveDeps: Deps = {
   },
   aptos: { destinations: aptosDestinations(), maxUnits: aptosMaxUsdcBase() },
   evmRoutes: env.evmRoutes,
+  feeAddresses: env.feeAddresses,
   stellarRoutes,
   evmWrapperAddress: (chain) => wrapperFor(chain, env.arcUseWrapper),
   async evmWrapperSettings(chain) {
@@ -236,6 +237,7 @@ export const liveDeps: Deps = {
           amount: p.amount,
           target,
           maxFee: p.maxFee,
+          ...(p.fee ? { fee: p.fee } : {}),
         });
         return {
           id: "burn",
