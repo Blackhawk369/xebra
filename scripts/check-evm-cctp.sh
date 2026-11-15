@@ -142,7 +142,10 @@ while IFS='|' read -r name chain_id domain usdc default_rpc TOKEN_MESSENGER MESS
     check "Arc's TokenMinter maps $name USDC to Arc USDC" "$ARC_USDC" \
       "$(rd "$arc_rpc" call "$arc_minter" 'getLocalToken(uint32,bytes32)(address)' "$domain" "$(pad32 "$usdc")")"
 
-    for route in "$domain/$ARC_DOMAIN" "$ARC_DOMAIN/$domain"; do
+    routes="$domain/$ARC_DOMAIN $ARC_DOMAIN/$domain"
+    # Circle does not deliver to Injective (29), Morph (30) or Pharos (31): only out of them.
+    case "$domain" in 29|30|31) routes="$domain/$ARC_DOMAIN" ;; esac
+    for route in $routes; do
       quote="$(curl -fsS -m 20 "$IRIS/v2/burn/USDC/fees/$route?forward=true" || echo '[]')"
       check "Iris prices forwarding for $route at both finality thresholds" "2" \
         "$(echo "$quote" | python3 -c '
