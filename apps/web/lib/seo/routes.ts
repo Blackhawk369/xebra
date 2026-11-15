@@ -1,4 +1,5 @@
 import {
+  CLAIM_ONLY_DOMAINS,
   type DomainForwardConfig,
   EVM_CHAINS,
   EVM_CHAIN_IDS,
@@ -32,7 +33,7 @@ export interface RouteInfo {
   from: Endpoint;
   to: Endpoint;
   /** Through Xebra's Stellar wrapper, Xebra's EVM wrapper, or straight to Circle. */
-  via: "stellar-wrapper" | "evm-wrapper" | "circle" | "stellar-relayer";
+  via: "stellar-wrapper" | "evm-wrapper" | "circle" | "stellar-relayer" | "claimed";
   /** The most Circle may be paid to deliver, in USDC units (6 decimals). */
   deliveryCapUnits: number;
   /** The same when Circle also opens the recipient's Solana account; null where not offered. */
@@ -103,7 +104,13 @@ export function offeredRoutes(
         slug: routeSlug(source, to),
         from: source,
         to,
-        via: viaWrapper ? "evm-wrapper" : "circle",
+        // Circle does not deliver to these: the recipient claims, and no wrapper sends there.
+        via:
+          !toSolana && CLAIM_ONLY_DOMAINS.includes(EVM_CHAINS[to].cctpDomainId)
+            ? "claimed"
+            : viaWrapper
+              ? "evm-wrapper"
+              : "circle",
         deliveryCapUnits: toSolana
           ? SOLANA_FROM_ARC.maxForwardFeeUnits
           : EVM_CHAINS[to].maxForwardFeeUnits,

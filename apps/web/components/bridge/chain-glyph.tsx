@@ -39,6 +39,9 @@ export type Chain =
   | "cronos"
   | "plasma"
   | "xlayer"
+  | "injective"
+  | "morph"
+  | "pharos"
   | "ink";
 
 const SRC: Record<Chain, string> = {
@@ -67,6 +70,9 @@ const SRC: Record<Chain, string> = {
   cronos: "/chains/cronos.png",
   plasma: "/chains/plasma.png",
   xlayer: "/chains/xlayer.png",
+  injective: "/chains/injective.png",
+  morph: "/chains/morph.png",
+  pharos: "/chains/pharos.png",
   ink: "/chains/ink.png",
 };
 
@@ -114,5 +120,8 @@ export const CHAIN_NAMES: Record<Chain, string> = {
   cronos: "Cronos",
   plasma: "Plasma",
   xlayer: "X Layer",
+  injective: "Injective",
+  morph: "Morph",
+  pharos: "Pharos",
   ink: "Ink",
 };

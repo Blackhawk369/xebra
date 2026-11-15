@@ -2,7 +2,7 @@
 
 import { StrKey } from "@stellar/stellar-sdk";
 import { type Quote, createXebraClient } from "@xebra/sdk";
-import type { EvmChain } from "@xebra/sdk/core";
+import { type EvmChain, checkAddressOn } from "@xebra/sdk/core";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Hex } from "viem";
@@ -19,8 +19,10 @@ import { StripeRule } from "../ui/stripe-rule";
 import { useWallets } from "../wallet/wallet-provider";
 
 /**
- * An EVM chain to Stellar. Circle does not deliver into Stellar: the burn names Circle's Stellar
- * forwarder, and Xebra's relayer completes the mint once Circle has attested it.
+ * An EVM chain to where Circle does not deliver. To Stellar the burn names Circle's Stellar
+ * forwarder, and Xebra's relayer completes the mint once Circle has attested it. To a chain Circle
+ * does not deliver to (`to`: Injective, Morph, Pharos) the burn carries no hook, and the recipient
+ * claims it at `/claim`.
  *
  * Priced and built by Xebra's own API (`/v1/quote`, `/v1/transfers`), which checks the recipient's
  * account and USDC trustline before anything is signed. The wallet signs each step in order: an
@@ -40,11 +42,16 @@ type Delivery =
 
 export function EvmStellarPanel({
   source,
+  to = null,
   onBusyChange,
 }: {
   source: EvmChain;
+  /** A chain the recipient claims on; absent for Stellar. */
+  to?: EvmChain | null;
   onBusyChange?: (busy: boolean) => void;
 }) {
+  const destId = to ? to.id : "stellar";
+  const destName = to ? to.name : "Stellar";
   const { connections, stellarKit, open: openWallets } = useWallets();
   const stellarAddress = connections.stellar?.address ?? null;
   const [claiming, setClaiming] = useState(false);
@@ -69,7 +76,9 @@ export function EvmStellarPanel({
   const [sent, setSent] = useState<{ tx: Hex; feePaid: boolean } | null>(null);
   const [delivery, setDelivery] = useState<Delivery>({ kind: "waiting" });
 
-  const recipientOk = StrKey.isValidEd25519PublicKey(recipient.trim());
+  const recipientOk = to
+    ? checkAddressOn(to, recipient).ok
+    : StrKey.isValidEd25519PublicKey(recipient.trim());
   const amountOk = /^\d{1,12}(\.\d{1,6})?$/.test(amount.trim()) && Number(amount) > 0;
   const busy = step !== null || sent !== null;
 
@@ -86,7 +95,7 @@ export function EvmStellarPanel({
     let cancelled = false;
     const timer = setTimeout(() => {
       client
-        .quote({ from: source.id, to: "stellar", amount: amount.trim() })
+        .quote({ from: source.id, to: destId, amount: amount.trim() })
         .then((q) => {
           if (!cancelled) setQuote(q);
         })
@@ -98,12 +107,13 @@ export function EvmStellarPanel({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [client, source.id, amount, amountOk]);
+  }, [client, source.id, destId, amount, amountOk]);
 
   // After the burn: ask the relayer to finish, every 20 seconds, until it has or says it cannot.
   const asking = useRef(false);
   useEffect(() => {
-    if (!sent) return;
+    // A claimed transfer has no relayer to ask: the receipt points at /claim.
+    if (!sent || to) return;
     let cancelled = false;
     const tick = async () => {
       if (asking.current) return;
@@ -142,7 +152,7 @@ export function EvmStellarPanel({
       cancelled = true;
       clearInterval(timer);
     };
-  }, [sent, source.cctpDomainId]);
+  }, [sent, to, source.cctpDomainId]);
 
   async function send() {
     if (!wallet?.provider || !wallet.address) {
@@ -158,7 +168,7 @@ export function EvmStellarPanel({
       setStep("Preparing the transfer");
       const build = await client.createTransfer({
         from: source.id,
-        to: "stellar",
+        to: destId,
         amount: amount.trim(),
         sender: from,
         recipient: recipient.trim(),
@@ -198,6 +208,26 @@ export function EvmStellarPanel({
     } finally {
       setStep(null);
     }
+  }
+
+  if (sent && to) {
+    return (
+      <div className="mt-6 flex flex-col gap-3">
+        <Notice tone="signal" title="Burn submitted">
+          Circle attests it once {source.name} has finalised the burn ({source.standardEta}). Circle
+          does not deliver to {to.name}, so the recipient claims it there, for {to.claimCost}.
+        </Notice>
+        <InsetTray className="py-3">
+          <span className="tabular block truncate font-mono text-xs text-bone/45">{sent.tx}</span>
+        </InsetTray>
+        <a
+          className="text-sm text-bone/70 underline underline-offset-4 hover:text-bone"
+          href={`/claim?tx=${sent.tx}&src=${source.cctpDomainId}`}
+        >
+          Claim it on {to.name}
+        </a>
+      </div>
+    );
   }
 
   if (sent) {
@@ -260,7 +290,7 @@ export function EvmStellarPanel({
       <Field
         id="evm-stellar-amount"
         label="Amount"
-        hint={`USDC on ${source.name}. Xebra's fee comes out of it; at least 1.10 to Stellar.`}
+        hint={`USDC on ${source.name}. Xebra's fee comes out of it; at least ${to ? "0.50" : "1.10"} to ${destName}.`}
         trailing={<span className="text-xs text-bone/35">USDC</span>}
       >
         <Input
@@ -277,10 +307,18 @@ export function EvmStellarPanel({
 
       <Field
         id="evm-stellar-recipient"
-        label="Stellar address"
-        hint="An existing account that already holds a USDC trustline. Starts with G."
+        label={`${destName} address`}
+        hint={
+          to
+            ? `Any ${to.name} address. Check it carefully: a CCTP transfer cannot be reversed.`
+            : "An existing account that already holds a USDC trustline. Starts with G."
+        }
         error={
-          recipient.trim() !== "" && !recipientOk ? "That is not a Stellar account address." : null
+          recipient.trim() !== "" && !recipientOk
+            ? to
+              ? `That is not a valid ${to.name} address.`
+              : "That is not a Stellar account address."
+            : null
         }
       >
         <Input
@@ -289,7 +327,7 @@ export function EvmStellarPanel({
           spellCheck={false}
           value={recipient}
           onChange={(e) => setRecipient(e.target.value)}
-          placeholder="G..."
+          placeholder={to ? "0x…" : "G..."}
           className="h-12 font-mono text-xs"
           invalid={recipient.trim() !== "" && !recipientOk}
           disabled={busy}
@@ -315,7 +353,11 @@ export function EvmStellarPanel({
             <DataRow
               label="Delivery"
               value="0 USDC"
-              hint="Circle does not deliver into Stellar; Xebra's relayer completes the mint."
+              hint={
+                to
+                  ? `Circle does not deliver to ${to.name}; the recipient claims it there.`
+                  : "Circle does not deliver into Stellar; Xebra's relayer completes the mint."
+              }
             />
             <DataRow label="Xebra fee" value={`−${quote.fees.xebra} USDC`} />
             <div className="pt-3">
@@ -346,7 +388,7 @@ export function EvmStellarPanel({
         onClick={send}
         trailing={<ArrowRight className="h-4 w-4" />}
       >
-        {wallet ? "Send to Stellar" : "Connect an EVM wallet"}
+        {wallet ? `Send to ${destName}` : "Connect an EVM wallet"}
       </Button>
     </div>
   );

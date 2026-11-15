@@ -163,7 +163,7 @@ describe("the route lists", () => {
     expect(parseArcSendsTo("base, arbitrum")).toEqual(["arbitrum", "base"]);
     expect(parseArcSendsTo("solana,unichain")).toEqual(["unichain", "solana"]);
     expect(parseArcSendsTo("all")).toEqual(ARC_PEERS);
-    expect(ARC_PEERS).toHaveLength(22);
+    expect(ARC_PEERS).toHaveLength(25);
     expect(parseArcReceivesFrom("all")).toEqual(EVM_ARC_PEERS);
   });
 
@@ -188,7 +188,7 @@ describe("the route lists", () => {
     expect(parseStellarSendsTo(undefined)).toEqual([]);
     expect(parseStellarSendsTo("all")).toEqual(EVM_ARC_PEERS);
     expect(parseStellarSendsTo("ink, base")).toEqual(["base", "ink"]);
-    for (const other of ["arc", "solana", "injective"]) {
+    for (const other of ["arc", "solana", "starknet"]) {
       expect(() => parseStellarSendsTo(other)).toThrow(
         `NEXT_PUBLIC_STELLAR_SENDS_TO names "${other}"`,
       );

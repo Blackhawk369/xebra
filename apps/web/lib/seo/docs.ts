@@ -310,10 +310,13 @@ function routeDoc(r: RouteInfo, all: RouteInfo[]): Doc {
   const fromStellar = r.from === "stellar";
   const viaXebra = r.via === "stellar-wrapper" || r.via === "evm-wrapper";
   const relayed = r.via === "stellar-relayer";
+  const claimed = r.via === "claimed";
   const title = `Bridge USDC from ${from} to ${to}`;
   const feeRow = viaXebra
     ? `${xebraFeeRule}, with Circle's delivery fee paid out of it`
-    : "0.10 USDC flat (0.05 where the recipient claims), paid beside the burn";
+    : claimed
+      ? "0.05 USDC flat, paid beside the burn"
+      : "0.10 USDC flat (0.05 where the recipient claims), paid beside the burn";
   const recipient = relayed
     ? "an existing Stellar account (G…) that holds a USDC trustline"
     : toEvm
@@ -326,10 +329,14 @@ function routeDoc(r: RouteInfo, all: RouteInfo[]): Doc {
     ? `${FEES.minTransferUsdc} to ${FEES.maxTransferUsdc} USDC per transfer`
     : relayed
       ? "From 1.10 USDC; no Xebra maximum"
-      : "No Xebra limit; fees may be at most a tenth of the amount";
+      : claimed
+        ? "From 0.50 USDC; no Xebra maximum"
+        : "No Xebra limit; fees may be at most a tenth of the amount";
   const circleRow = relayed
     ? "None: Circle does not deliver into Stellar; Xebra's relayer completes the mint"
-    : `Quoted live before you sign; Xebra refuses more than ${usdc(r.deliveryCapUnits)} USDC${r.deliveryCapNewAccountUnits !== null ? ` (${usdc(r.deliveryCapNewAccountUnits)} when Circle opens the account)` : ""}`;
+    : claimed
+      ? `None: Circle does not deliver to ${to}; the recipient claims it there`
+      : `Quoted live before you sign; Xebra refuses more than ${usdc(r.deliveryCapUnits)} USDC${r.deliveryCapNewAccountUnits !== null ? ` (${usdc(r.deliveryCapNewAccountUnits)} when Circle opens the account)` : ""}`;
   const evmSource = r.from !== "stellar" ? EVM_CHAINS[r.from as EvmChainId] : null;
   const siblings = all.filter((o) => o.from === r.from && o.slug !== r.slug);
   return {
@@ -358,7 +365,7 @@ Send USDC from ${from} to ${to} with Xebra. Circle burns it on ${from} and mints
 | Circle's delivery fee | ${circleRow} |
 | Amount | ${limits} |
 | Speed | ${relayed ? "Usually 15 to 20 minutes: Circle attests once the chain has finalised the burn" : `Usually a few minutes${evmSource?.fast ? "; Fast transfers are offered for a small extra fee" : ""}`} |
-| If it gets stuck | Claim it yourself at [claim](/claim) |
+| If it gets stuck | ${claimed ? `It never arrives by itself: claim it at [claim](/claim) once Circle attests` : "Claim it yourself at [claim](/claim)"} |
 
 ## How to send
 

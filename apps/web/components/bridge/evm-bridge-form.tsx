@@ -3,6 +3,7 @@
 import type { CircleHealth } from "@xebra/cctp-client";
 import type { BurnRecipient } from "@xebra/cctp-evm";
 import {
+  CLAIM_ONLY_DOMAINS,
   type DeepLink,
   type EnabledRoutes,
   type EvmChain,
@@ -627,16 +628,24 @@ export function EvmBridgeForm({
     </div>
   );
 
-  if (toStellar) {
+  // Where Circle does not deliver (Stellar, or a chain the recipient claims on), its own panel.
+  const claimedOn =
+    !toStellar && dest.evm && CLAIM_ONLY_DOMAINS.includes(dest.cctpDomainId) ? dest.evm : null;
+  if (toStellar || claimedOn) {
     return (
       <>
         <h2 id="bridge-heading" className="sr-only">
-          Bridge USDC from {source.name} to Stellar
+          Bridge USDC from {source.name} to {claimedOn ? claimedOn.name : "Stellar"}
         </h2>
         <div className="px-5 py-6 sm:px-6">
           {sourcePicker}
           {destinationPicker}
-          <EvmStellarPanel source={source} {...(onBusyChange ? { onBusyChange } : {})} />
+          <EvmStellarPanel
+            key={claimedOn?.id ?? "stellar"}
+            source={source}
+            to={claimedOn}
+            {...(onBusyChange ? { onBusyChange } : {})}
+          />
         </div>
       </>
     );

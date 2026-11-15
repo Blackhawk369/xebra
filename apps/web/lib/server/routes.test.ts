@@ -26,8 +26,8 @@ describe("readSource", () => {
   it("refuses a chain we do not burn on, and anything that is not a domain", () => {
     // 5 is Solana: a destination here, never a source. 8 (Sui) and 29 are Circle domains we do
     // not burn on.
-    // 30 and 31 (Morph, Pharos) are Circle chains not in the table yet.
-    for (const bad of ["30", "31", "5", "8", "29", "999", "-1", "0x6", "base", "6;", " 6"]) {
+    // 25 is Starknet (not EVM); 17 is BNB Chain, which has no USDC on CCTP.
+    for (const bad of ["25", "17", "5", "8", "999", "-1", "0x6", "base", "6;", " 6"]) {
       expect(readSource(bad, STELLAR), bad).toBeNull();
     }
   });
@@ -64,12 +64,12 @@ describe("isOfferedRoute", () => {
   it("offers Stellar to Solana and to every EVM chain in the table, and nothing else", () => {
     expect(isOfferedRoute(27, 5, STELLAR)).toBe(true);
     for (const domain of [
-      0, 1, 2, 3, 6, 7, 10, 11, 12, 13, 14, 15, 16, 18, 19, 21, 22, 26, 28, 32, 33, 37,
+      0, 1, 2, 3, 6, 7, 10, 11, 12, 13, 14, 15, 16, 18, 19, 21, 22, 26, 28, 29, 30, 31, 32, 33, 37,
     ]) {
       expect(isOfferedRoute(27, domain, STELLAR), String(domain)).toBe(true);
     }
-    // Chains not in the table yet (Injective, Morph, Pharos), Stellar itself, and Sui.
-    for (const no of [29, 30, 31, 27, 8]) {
+    // Starknet (not EVM), Stellar itself, and Sui.
+    for (const no of [25, 27, 8]) {
       expect(isOfferedRoute(27, no, STELLAR), String(no)).toBe(false);
     }
   });
@@ -85,7 +85,7 @@ describe("isOfferedRoute", () => {
     // Ink (21) and Sei (16), both directions; the chains left out, neither.
     expect(isOfferedRoute(21, 26, STELLAR)).toBe(true);
     expect(isOfferedRoute(26, 16, STELLAR)).toBe(true);
-    for (const left of [29, 30, 31]) {
+    for (const left of [25, 17]) {
       expect(isOfferedRoute(26, left, STELLAR)).toBe(false);
       expect(isOfferedRoute(left, 26, STELLAR)).toBe(false);
     }
@@ -253,7 +253,7 @@ describe("Aptos as a source", () => {
     ]) {
       expect(isOfferedRoute(9, d, STELLAR), String(d)).toBe(true);
     }
-    // Stellar, Sui, Aptos itself, and Circle chains not in the table yet (Injective, Morph).
+    // Stellar, Sui, Aptos itself, and chains Circle does not deliver to (an Aptos burn is forwarded).
     for (const d of [27, 8, 9, 29, 30])
       expect(isOfferedRoute(9, d, STELLAR), String(d)).toBe(false);
     vi.stubEnv("APTOS_SENDS_TO", "base, solana, nonsense");

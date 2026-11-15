@@ -12,6 +12,7 @@ import {
   normaliseAptosAddress,
 } from "@xebra/sdk/build";
 import {
+  CLAIM_ONLY_DOMAINS,
   EVM_CHAINS,
   type EvmChainId,
   type FeePlan,
@@ -145,6 +146,8 @@ const SOLANA_DOMAIN = 5;
  * (`/api/stellar-inbound/complete`).
  */
 const RELAYED_MIN_UNITS = 1_000_000n;
+/** The smallest burn into a chain the recipient claims on: with Xebra's 0.05, fees stay within a tenth. */
+const CLAIM_ONLY_MIN_BURN = 450_000n;
 
 function checkSender(from: SourceId, sender: string): void {
   const ok =
@@ -496,6 +499,14 @@ export function createService(deps: Deps, now: () => number = Date.now) {
     return "evm";
   }
 
+  function isClaimOnly(to: DestId): boolean {
+    return (
+      to !== "stellar" &&
+      to !== "solana" &&
+      CLAIM_ONLY_DOMAINS.includes(EVM_CHAINS[to].cctpDomainId)
+    );
+  }
+
   function destinationDomain(to: DestId): number {
     if (to === "stellar") return STELLAR_CCTP_DOMAIN;
     if (to === "solana") return SOLANA_DOMAIN;
@@ -530,12 +541,27 @@ export function createService(deps: Deps, now: () => number = Date.now) {
     minBurn: bigint,
     maximum: bigint | null,
   ): { health: CircleHealth | null; options: QuoteOption[] } {
-    const flat = flatFee(from, "stellar");
+    return unforwarded(from, "stellar", amount, minBurn, maximum);
+  }
+
+  /**
+   * A transfer Circle does not deliver and is paid nothing for: into Stellar (Xebra's relayer
+   * finishes it) or into a chain where the recipient claims it (Injective, Morph, Pharos).
+   * Standard only; Xebra's flat fee beside the burn.
+   */
+  function unforwarded(
+    from: Exclude<SourceId, "stellar">,
+    to: DestId,
+    amount: bigint,
+    minBurn: bigint,
+    maximum: bigint | null,
+  ): { health: CircleHealth | null; options: QuoteOption[] } {
+    const flat = flatFee(from, to);
     const fee = flat?.fee ?? 0n;
     const minimum = minBurn + fee;
     const quote = quoteOf(
       from,
-      "stellar",
+      to,
       "standard",
       amount,
       {
@@ -553,7 +579,7 @@ export function createService(deps: Deps, now: () => number = Date.now) {
             ok: false,
             error: new ApiError(
               "amount_below_minimum",
-              `Send at least ${formatUsdcAmount(minimum)} USDC from ${SOURCE_NAME(from)} to Stellar.`,
+              `Send at least ${formatUsdcAmount(minimum)} USDC from ${SOURCE_NAME(from)} to ${DEST_NAME(to)}.`,
               { minimum },
             ),
           }
@@ -721,6 +747,11 @@ export function createService(deps: Deps, now: () => number = Date.now) {
     }
 
     if (q.from === "solana") return solanaOptions(q.to, q.amount);
+    if (q.from !== "stellar" && isClaimOnly(q.to)) {
+      // Circle does not deliver there: no hook, no Circle fee, the recipient claims it. Fees
+      // within a tenth of the amount, so at least 0.50 with Xebra's 0.05.
+      return unforwarded(q.from, q.to, q.amount, CLAIM_ONLY_MIN_BURN, null);
+    }
     if (q.to === "stellar" && q.from !== "stellar") {
       // An EVM chain into Stellar: no Circle fee, Standard only; Xebra's relayer completes it from
       // a 1 USDC burn. Never through the wrapper, whose burn cannot name Stellar's forwarder.
@@ -1271,9 +1302,11 @@ export function createService(deps: Deps, now: () => number = Date.now) {
     // An EVM source: through Xebra's wrapper where the quote priced one, else straight to Circle.
     const source = EVM_CHAINS[r.from];
     const toStellar = r.to === "stellar";
-    const via = toStellar ? null : (priced.evmVia ?? null);
+    // Not delivered by Circle: no fee plan, no wrapper, a burn with nothing for Circle.
+    const claimOnly = isClaimOnly(r.to);
+    const via = toStellar || claimOnly ? null : (priced.evmVia ?? null);
     const plan = priced.evm;
-    if (!plan && !toStellar) throw new Error("an EVM quote without its fee plan");
+    if (!plan && !toStellar && !claimOnly) throw new Error("an EVM quote without its fee plan");
     const burnRecipient: BurnRecipient = toStellar
       ? // Mint recipient and caller both Circle's Stellar forwarder, the hook naming the account.
         stellarBurnRecipient(recipient)
@@ -1325,11 +1358,17 @@ export function createService(deps: Deps, now: () => number = Date.now) {
               expiresAt: null,
               description: `Burn USDC on ${source.name}; Circle attests it, and the mint on Stellar is completed by Xebra's relayer or by POST /v1/claims.`,
             }
-          : {
-              ...step,
-              expiresAt: priced.quote.expiresAt,
-              description: `${step.description} Signed after ${priced.quote.expiresAt}, build it again first: the fee may have moved.`,
-            },
+          : claimOnly
+            ? {
+                ...step,
+                expiresAt: null,
+                description: `Burn USDC on ${source.name}; Circle attests it, and the recipient claims it on ${DEST_NAME(r.to)} (POST /v1/claims, or ${deps.siteUrl}/claim): Circle does not deliver there.`,
+              }
+            : {
+                ...step,
+                expiresAt: priced.quote.expiresAt,
+                description: `${step.description} Signed after ${priced.quote.expiresAt}, build it again first: the fee may have moved.`,
+              },
     );
     if (flat) {
       steps.push(

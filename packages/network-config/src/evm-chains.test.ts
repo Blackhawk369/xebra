@@ -44,6 +44,9 @@ describe("EVM_CHAINS", () => {
       ["cronos", 25, 32, "0x3D7F2C478aAfdB65542BCB44bCeeC05849999d2D"],
       ["plasma", 9745, 33, "0x2d661C89D812261039AF9764eceaAee884f5F67F"],
       ["xlayer", 196, 37, "0xB6CEceAB302E2E4948951eE7843FC24E92933061"],
+      ["injective", 1776, 29, "0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"],
+      ["morph", 2818, 30, "0xCfb1186F4e93D60E60a8bDd997427D1F33bc372B"],
+      ["pharos", 1672, 31, "0xC879C018dB60520F4355C26eD1a6D572cdAC1815"],
       ["arc", 5042, 26, "0x3600000000000000000000000000000000000000"],
     ]);
   });
@@ -100,6 +103,7 @@ describe("EVM_CHAINS", () => {
       "plume",
       "edge",
       "xlayer",
+      "morph",
     ]);
   });
 
@@ -157,9 +161,9 @@ describe("EVM_ROUTES", () => {
     // Every EVM domain Circle forwards to (Iris, 2026-11-15). Ethereum, Linea, Plume and EDGE were
     // left out until 2026-11-15, when the owner asked for every route CCTP supports.
     expect(EVM_ARC_PEERS.map((id) => EVM_CHAINS[id].cctpDomainId)).toEqual([
-      1, 2, 3, 6, 7, 10, 12, 13, 14, 15, 16, 18, 19, 21, 0, 11, 22, 28, 32, 33, 37,
+      1, 2, 3, 6, 7, 10, 12, 13, 14, 15, 16, 18, 19, 21, 0, 11, 22, 28, 32, 33, 37, 29, 30, 31,
     ]);
-    expect(EVM_ROUTES).toHaveLength(42);
+    expect(EVM_ROUTES).toHaveLength(48);
     expect(isEvmRoute(26, 0)).toBe(true);
     expect(isEvmRoute(37, 26)).toBe(true);
     for (const route of EVM_ROUTES) {

@@ -65,6 +65,9 @@ export type EvmChainId =
   | "cronos"
   | "plasma"
   | "xlayer"
+  | "injective"
+  | "morph"
+  | "pharos"
   | "arc";
 
 export interface EvmChain {
@@ -432,6 +435,54 @@ export const EVM_CHAINS: Record<EvmChainId, EvmChain> = {
     maxForwardFeeUnits: 500_000,
     claimCost: "a little OKB for gas",
     standardEta: "15 to 20 minutes",
+  },
+  injective: {
+    id: "injective",
+    name: "Injective",
+    chainId: 1776,
+    cctpDomainId: CCTP_DOMAIN.injective,
+    usdcAddress: "0xa00C59fF5a080D2b954d0c75e46E22a0c371235a",
+    ...CIRCLE,
+    rpcUrl: "https://sentry.evm-rpc.injective.network",
+    explorerUrl: "https://blockscout.injective.network",
+    nativeCurrency: { name: "Injective", symbol: "INJ", decimals: 18 },
+    fast: false,
+    // Circle does not deliver here: a transfer in is claimed, so no delivery fee is ever signed.
+    maxForwardFeeUnits: 0,
+    claimCost: "a little INJ for gas, to claim it",
+    standardEta: "under a minute",
+  },
+  morph: {
+    id: "morph",
+    name: "Morph",
+    chainId: 2818,
+    cctpDomainId: CCTP_DOMAIN.morph,
+    usdcAddress: "0xCfb1186F4e93D60E60a8bDd997427D1F33bc372B",
+    ...CIRCLE,
+    rpcUrl: "https://rpc.morph.network",
+    explorerUrl: "https://explorer.morph.network",
+    nativeCurrency: ETH,
+    fast: true,
+    // Circle does not deliver here: a transfer in is claimed, so no delivery fee is ever signed.
+    maxForwardFeeUnits: 0,
+    claimCost: "a little ETH on Morph for gas, to claim it",
+    standardEta: "20 to 30 minutes",
+  },
+  pharos: {
+    id: "pharos",
+    name: "Pharos",
+    chainId: 1672,
+    cctpDomainId: CCTP_DOMAIN.pharos,
+    usdcAddress: "0xC879C018dB60520F4355C26eD1a6D572cdAC1815",
+    ...CIRCLE,
+    rpcUrl: "https://rpc.pharos.xyz",
+    explorerUrl: "https://pharosscan.xyz",
+    nativeCurrency: { name: "Pharos", symbol: "PROS", decimals: 18 },
+    fast: false,
+    // Circle does not deliver here: a transfer in is claimed, so no delivery fee is ever signed.
+    maxForwardFeeUnits: 0,
+    claimCost: "a little PROS for gas, to claim it",
+    standardEta: "under a minute",
   },
   arc: {
     id: "arc",

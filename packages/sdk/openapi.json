@@ -475,6 +475,9 @@
           "cronos",
           "plasma",
           "xlayer",
+          "injective",
+          "morph",
+          "pharos",
           "arc"
         ],
         "description": "A chain, as the API names it.",

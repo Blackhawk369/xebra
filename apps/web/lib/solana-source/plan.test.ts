@@ -187,8 +187,10 @@ describe("SOLANA_SENDS_TO", () => {
     expect(s.evm.map((c) => c.id)).toEqual(["base", "arc"]);
     expect(s.stellar).toBe(false);
   });
-  it("`all` is every EVM chain in the table and Stellar", () => {
-    expect(parseSolanaSendsTo("all").evm).toHaveLength(Object.keys(EVM_CHAINS).length);
+  it("`all` is every EVM chain Circle delivers to, and Stellar", () => {
+    // Not Injective, Morph or Pharos: a Solana burn is always a forwarded one.
+    expect(parseSolanaSendsTo("all").evm).toHaveLength(Object.keys(EVM_CHAINS).length - 3);
+    expect(parseSolanaSendsTo("all").evm.map((c) => c.id)).not.toContain("injective");
     expect(parseSolanaSendsTo("all").stellar).toBe(true);
     expect(parseSolanaSendsTo("all,stellar").stellar).toBe(true);
     expect(parseSolanaSendsTo("stellar")).toEqual({ evm: [], stellar: true });
