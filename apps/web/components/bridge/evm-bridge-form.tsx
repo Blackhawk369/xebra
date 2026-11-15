@@ -12,6 +12,7 @@ import {
   checkAddressOn,
   checkSolanaAddress,
   evmDestinationsFrom,
+  evmSendsToStellar,
   explorerTxUrl,
   flatFeeFor,
   formatUsdc6,
@@ -53,6 +54,7 @@ import { useWallets } from "../wallet/wallet-provider";
 import { BeneficiaryPicker } from "./beneficiary-picker";
 import { ChainPicker, PickerLabel } from "./chain-picker";
 import { EvmQuotePanel } from "./evm-quote-panel";
+import { EvmStellarPanel } from "./evm-stellar-panel";
 import { MaxAmount, QUICK_AMOUNTS, QuickAmount } from "./quick-amount";
 import { type ReceiptRoute, SubmittedNotice } from "./receipt";
 import { ArcRecipientPanel, RecipientPanel, UseMyWallet } from "./recipient-panels";
@@ -135,6 +137,10 @@ export function EvmBridgeForm({
   );
   const [destId, setDestId] = useState<RouteDestinationId>(destinations[0]?.id ?? "arc");
   const dest = useMemo(() => routeDestination(destId), [destId]);
+  // Stellar is offered beside the others but sent by its own panel: no Circle delivery to price,
+  // and Xebra's relayer finishes it.
+  const stellarOffered = evmSendsToStellar(source.id, routes);
+  const [toStellar, setToStellar] = useState(destinations.length === 0 && stellarOffered);
 
   // Xebra's wrapper on this chain, when the build uses it, and its live settings: `undefined` while
   // the first read is out, null when it could not be read. A transfer is never priced without them.
@@ -596,6 +602,46 @@ export function EvmBridgeForm({
       ? speedFeeFor(amount, health.tiers.fast.minimumFeePpb)
       : null;
 
+  const pickerOptions: Array<{ id: RouteDestinationId | "stellar"; name: string }> = [
+    ...destinations,
+    ...(stellarOffered ? [{ id: "stellar" as const, name: "Stellar" }] : []),
+  ];
+  const destinationPicker = pickerOptions.length > 1 && (
+    <div className="mt-6">
+      <PickerLabel>Send to</PickerLabel>
+      <ChainPicker
+        legend="Destination chain"
+        name="evm-destination-chain"
+        options={pickerOptions}
+        value={toStellar ? "stellar" : destId}
+        onChange={(id) => {
+          if (id === "stellar") {
+            setToStellar(true);
+          } else {
+            setToStellar(false);
+            chooseDestination(id);
+          }
+        }}
+        disabled={busy}
+      />
+    </div>
+  );
+
+  if (toStellar) {
+    return (
+      <>
+        <h2 id="bridge-heading" className="sr-only">
+          Bridge USDC from {source.name} to Stellar
+        </h2>
+        <div className="px-5 py-6 sm:px-6">
+          {sourcePicker}
+          {destinationPicker}
+          <EvmStellarPanel source={source} {...(onBusyChange ? { onBusyChange } : {})} />
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <h2 id="bridge-heading" className="sr-only">
@@ -679,19 +725,7 @@ export function EvmBridgeForm({
           </div>
         </Field>
 
-        {destinations.length > 1 && (
-          <div className="mt-6">
-            <PickerLabel>Send to</PickerLabel>
-            <ChainPicker
-              legend="Destination chain"
-              name="evm-destination-chain"
-              options={destinations}
-              value={destId}
-              onChange={chooseDestination}
-              disabled={busy}
-            />
-          </div>
-        )}
+        {destinationPicker}
 
         {fastOffered && (
           <div className="mt-6">
