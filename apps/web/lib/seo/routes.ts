@@ -127,6 +127,7 @@ export function candidateSlugs(): string[] {
     ...evm.map((id) => routeSlug("arc", id)),
     routeSlug("arc", "solana"),
     ...evm.map((id) => routeSlug(id, "arc")),
+    ...evm.map((id) => routeSlug(id, "solana")),
   ];
 }
 

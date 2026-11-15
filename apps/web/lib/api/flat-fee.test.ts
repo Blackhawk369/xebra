@@ -10,6 +10,7 @@ import {
   EVM_SENDER,
   RECIPIENT,
   SENDER,
+  SOLANA_WALLET,
   STELLAR_RECIPIENT,
   SUI_SENDER,
   SUI_STEP,
@@ -211,6 +212,26 @@ describe("Xebra's flat fee", () => {
     expect(steps.map((s) => s.id)).toEqual(["burn"]);
     expect(quote.fees.xebra).toBeGreaterThan(0n);
     expect(stellarDestination("base").domain).toBe(6);
+  });
+
+  it("Base to Solana, once switched on: listed, priced with 0.10, burned to the token account", async () => {
+    const s = svc(
+      {},
+      { evmRoutes: { arcSendsTo: [], arcReceivesFrom: [], evmToSolana: ["base"] } },
+    );
+    const { routes } = await s.routes();
+    const base = routes.find((g) => g.from === "base");
+    expect(base?.to.map((d) => d.id)).toEqual(["solana"]);
+    const { quote, steps } = await s.buildTransfer({
+      from: "base",
+      to: "solana",
+      amount: 25_000_000n,
+      sender: EVM_SENDER,
+      recipient: SOLANA_WALLET,
+    });
+    expect(quote.fees.xebra).toBe(100_000n);
+    expect(steps.map((x) => x.id)).toEqual(["approve", "burn", "fee"]);
+    expect(evmCall(steps[2]).args).toEqual([FEES.evm, 100_000n]);
   });
 
   it("refuses a source whose fee address is not set, rather than serving it free", async () => {

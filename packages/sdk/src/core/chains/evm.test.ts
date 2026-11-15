@@ -21,6 +21,7 @@ import {
   parseArcReceivesFrom,
   parseArcSendsTo,
   parseEvmMesh,
+  parseEvmToSolana,
   parseStellarSendsTo,
 } from "./evm.js";
 
@@ -120,6 +121,34 @@ describe("the EVM mesh", () => {
   it("is off for a build that predates it (no evmMesh field)", () => {
     const old = { arcSendsTo: [], arcReceivesFrom: [] } as EnabledRoutes;
     expect(evmSources(old)).toEqual([]);
+  });
+});
+
+describe("EVM chains to Solana", () => {
+  const routes = {
+    arcSendsTo: [],
+    arcReceivesFrom: [],
+    evmToSolana: ["base", "arbitrum"],
+  } as const;
+
+  it("adds Solana to the chains named, makes them sources, and nothing else", () => {
+    expect(evmDestinationsFrom("base", routes)).toEqual(["solana"]);
+    expect(evmDestinationsFrom("optimism", routes)).toEqual([]);
+    expect(evmSources(routes)).toEqual(["arbitrum", "base"]);
+    expect(hasEvmRoutes(routes)).toBe(true);
+  });
+
+  it("sits beside the mesh and Arc", () => {
+    const both = { ...routes, arcReceivesFrom: ["base"], evmMesh: ["base", "optimism"] } as const;
+    expect(evmDestinationsFrom("base", both)).toEqual(["arc", "optimism", "solana"]);
+  });
+
+  it("parses a list of EVM chains, and refuses Arc and Solana", () => {
+    expect(parseEvmToSolana("all")).not.toContain("arc");
+    expect(parseEvmToSolana("base, sei")).toEqual(["base", "sei"]);
+    expect(parseEvmToSolana(undefined)).toEqual([]);
+    expect(() => parseEvmToSolana("arc")).toThrow(/NEXT_PUBLIC_EVM_TO_SOLANA/);
+    expect(() => parseEvmToSolana("solana")).toThrow();
   });
 });
 

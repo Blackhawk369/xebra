@@ -121,6 +121,22 @@ describe("the EVM mesh", () => {
   });
 });
 
+describe("EVM chains to Solana", () => {
+  it("offers Solana from the EVM chains NEXT_PUBLIC_EVM_TO_SOLANA names, and only Solana", () => {
+    expect(isOfferedRoute(6, 5, STELLAR)).toBe(false);
+    vi.stubEnv("NEXT_PUBLIC_EVM_TO_SOLANA", "base");
+    expect(isOfferedRoute(6, 5, STELLAR)).toBe(true);
+    expect(isOfferedRoute(3, 5, STELLAR)).toBe(false);
+    expect(isOfferedRoute(6, 3, STELLAR)).toBe(false);
+    expect(isOfferedRoute(5, 6, STELLAR)).toBe(false);
+    vi.stubEnv("NEXT_PUBLIC_EVM_TO_SOLANA", "all");
+    expect(isOfferedRoute(3, 5, STELLAR)).toBe(true);
+    vi.stubEnv("NEXT_PUBLIC_EVM_TO_SOLANA", "solana");
+    expect(isOfferedRoute(6, 5, STELLAR)).toBe(false);
+    vi.unstubAllEnvs();
+  });
+});
+
 describe("readDomain", () => {
   it("reads digits only", () => {
     expect(readDomain("26")).toBe(26);
