@@ -3,6 +3,7 @@ import {
   parseArcSendsTo,
   parseEvmMesh,
   parseEvmToSolana,
+  parseEvmToStellar,
   parseStellarSendsTo,
 } from "@xebra/sdk/core";
 import { parseFeeAddresses } from "./fee-addresses";
@@ -69,6 +70,7 @@ const RAW = {
   NEXT_PUBLIC_ARC_RECEIVES_FROM: process.env.NEXT_PUBLIC_ARC_RECEIVES_FROM,
   NEXT_PUBLIC_EVM_MESH: process.env.NEXT_PUBLIC_EVM_MESH,
   NEXT_PUBLIC_EVM_TO_SOLANA: process.env.NEXT_PUBLIC_EVM_TO_SOLANA,
+  NEXT_PUBLIC_EVM_TO_STELLAR: process.env.NEXT_PUBLIC_EVM_TO_STELLAR,
   NEXT_PUBLIC_STELLAR_SENDS_TO: process.env.NEXT_PUBLIC_STELLAR_SENDS_TO,
   NEXT_PUBLIC_ARC_USE_WRAPPER: process.env.NEXT_PUBLIC_ARC_USE_WRAPPER,
   NEXT_PUBLIC_STELLAR_ESCROW_CONTRACT_ID: process.env.NEXT_PUBLIC_STELLAR_ESCROW_CONTRACT_ID,
@@ -175,6 +177,7 @@ export const env = {
     arcReceivesFrom: parseArcReceivesFrom(optional("NEXT_PUBLIC_ARC_RECEIVES_FROM")),
     evmMesh: parseEvmMesh(optional("NEXT_PUBLIC_EVM_MESH")),
     evmToSolana: parseEvmToSolana(optional("NEXT_PUBLIC_EVM_TO_SOLANA")),
+    evmToStellar: parseEvmToStellar(optional("NEXT_PUBLIC_EVM_TO_STELLAR")),
   },
   /**
    * The EVM chains other than Arc that Stellar may send to, through the wrapper: a comma-separated

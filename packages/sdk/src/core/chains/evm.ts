@@ -367,6 +367,12 @@ export interface EnabledRoutes {
    * recipient's USDC token account, as from Arc. Absent means none.
    */
   evmToSolana?: readonly EvmPeerId[];
+  /**
+   * EVM chains, Arc included, that send to Stellar. Circle does not deliver into Stellar: the burn
+   * names Circle's Stellar forwarder, and Xebra's relayer (or the recipient) completes the mint.
+   * Absent means none.
+   */
+  evmToStellar?: readonly EvmChainId[];
 }
 
 export const NO_ROUTES: EnabledRoutes = {
@@ -374,6 +380,7 @@ export const NO_ROUTES: EnabledRoutes = {
   arcReceivesFrom: [],
   evmMesh: [],
   evmToSolana: [],
+  evmToStellar: [],
 };
 
 /** The mesh's chains, if there are at least two of them; one chain alone reaches nothing. */
@@ -387,7 +394,8 @@ export function hasEvmRoutes(routes: EnabledRoutes): boolean {
     routes.arcSendsTo.length > 0 ||
     routes.arcReceivesFrom.length > 0 ||
     meshOf(routes).length > 0 ||
-    (routes.evmToSolana?.length ?? 0) > 0
+    (routes.evmToSolana?.length ?? 0) > 0 ||
+    (routes.evmToStellar?.length ?? 0) > 0
   );
 }
 
@@ -414,9 +422,11 @@ export function evmSources(routes: EnabledRoutes): EvmChainId[] {
     (id) =>
       routes.arcReceivesFrom.includes(id) ||
       mesh.includes(id) ||
-      (routes.evmToSolana?.includes(id) ?? false),
+      (routes.evmToSolana?.includes(id) ?? false) ||
+      (routes.evmToStellar?.includes(id) ?? false),
   );
-  return routes.arcSendsTo.length > 0 ? [...peers, "arc"] : peers;
+  const arcSends = routes.arcSendsTo.length > 0 || (routes.evmToStellar?.includes("arc") ?? false);
+  return arcSends ? [...peers, "arc"] : peers;
 }
 
 /**
@@ -458,6 +468,19 @@ export function parseEvmMesh(raw: string | null | undefined): EvmPeerId[] {
  */
 export function parseEvmToSolana(raw: string | null | undefined): EvmPeerId[] {
   return parseRouteList("NEXT_PUBLIC_EVM_TO_SOLANA", raw, EVM_ARC_PEERS);
+}
+
+/**
+ * `NEXT_PUBLIC_EVM_TO_STELLAR`: EVM chains, Arc included, that send to Stellar (completed by Xebra's
+ * relayer). `evmDestinationsFrom` does not list Stellar; callers add it from this list.
+ */
+export function parseEvmToStellar(raw: string | null | undefined): EvmChainId[] {
+  return parseRouteList("NEXT_PUBLIC_EVM_TO_STELLAR", raw, EVM_CHAIN_IDS);
+}
+
+/** Whether `source` may send to Stellar in this build. */
+export function evmSendsToStellar(source: EvmChainId, routes: EnabledRoutes): boolean {
+  return routes.evmToStellar?.includes(source) ?? false;
 }
 
 /** `NEXT_PUBLIC_ARC_SENDS_TO`: where Arc may send. EVM chains and `solana`. */

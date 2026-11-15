@@ -10,6 +10,7 @@ import { GET as delivery } from "../../app/api/delivery/route";
 import { GET as evmWrapper } from "../../app/api/evm-wrapper/route";
 import { GET as recipient } from "../../app/api/recipient/route";
 import { GET as solanaStellarStatus } from "../../app/api/solana-source/status/route";
+import { GET as stellarInboundStatus } from "../../app/api/stellar-inbound/status/route";
 import { GET as suiStatus } from "../../app/api/sui-stellar/status/route";
 import { buildAptosTransfer } from "../aptos/build";
 import { APTOS_CCTP_DOMAIN, aptosDestinations, aptosMaxUsdcBase } from "../aptos/config";
@@ -104,6 +105,15 @@ export const liveDeps: Deps = {
     return readJsonAnyStatus(
       await solanaStellarStatus(
         new Request(`${ORIGIN}/api/solana-source/status?tx=${encodeURIComponent(tx)}`),
+      ),
+    );
+  },
+  async stellarInboundStatus(tx, srcDomain) {
+    return readJsonAnyStatus(
+      await stellarInboundStatus(
+        new Request(
+          `${ORIGIN}/api/stellar-inbound/status?tx=${encodeURIComponent(tx)}&src=${srcDomain}`,
+        ),
       ),
     );
   },
@@ -259,6 +269,7 @@ export const liveDeps: Deps = {
     solanaStellarClaim: (tx, payer) => planClaim(tx, payer, SOLANA_CCTP_DOMAIN),
     aptosBuild: (request) => buildAptosTransfer(request, liveAptosBuildDeps()),
     aptosClaim: (tx, payer) => planClaim(tx, payer, APTOS_CCTP_DOMAIN),
+    stellarInboundClaim: (tx, payer, srcDomain) => planClaim(tx, payer, srcDomain),
   },
 };
 

@@ -65,6 +65,11 @@ export interface Deps {
    * empty means Aptos is off.
    */
   aptos?: { destinations: readonly AptosDestination[]; maxUnits: bigint | null };
+  /**
+   * A burn into Stellar from any source the relayer accepts, as `/api/stellar-inbound/status`
+   * answers it. Null if unreadable.
+   */
+  stellarInboundStatus?(tx: string, srcDomain: number): Promise<Record<string, unknown> | null>;
   /** An Aptos burn to Stellar's progress, as `/api/aptos/status` answers it. Null if unreadable. */
   aptosStatus?(tx: string): Promise<Record<string, unknown> | null>;
   /** What building a transaction reads. Absent where nothing is built (the MCP tools). */
@@ -181,6 +186,12 @@ export interface BuildDeps {
   aptosClaim?(
     tx: string,
     payer: string,
+  ): Promise<{ ok: true; xdr: string } | { ok: false; reason: string; delivered?: boolean }>;
+  /** The Stellar mint of a burn from an EVM chain into Stellar, with `payer` paying the fee. */
+  stellarInboundClaim?(
+    tx: string,
+    payer: string,
+    srcDomain: number,
   ): Promise<{ ok: true; xdr: string } | { ok: false; reason: string; delivered?: boolean }>;
   /** The Stellar mint of a Sui burn, with `payer` paying the fee. */
   suiClaim(

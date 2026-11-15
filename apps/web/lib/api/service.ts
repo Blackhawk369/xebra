@@ -24,6 +24,7 @@ import {
   chooseMaxFee,
   evmChainForDomain,
   evmDestinationsFrom,
+  evmSendsToStellar,
   evmSources,
   flatFeeFor,
   formatUsdc,
@@ -35,6 +36,7 @@ import {
   planEvmFee,
   planWrapperFee,
   solanaAddressToBytes32,
+  stellarBurnRecipient,
   stellarDestination,
   suggestedEvmMinimum,
   suggestedMinimum,
@@ -242,11 +244,23 @@ export function createService(deps: Deps, now: () => number = Date.now) {
       groups.push({
         from: source,
         name: SOURCE_NAME(source),
-        to: evmDestinationsFrom(source, deps.evmRoutes).map((id) => ({
-          id,
-          name: DEST_NAME(id),
-          speeds,
-        })),
+        to: [
+          ...evmDestinationsFrom(source, deps.evmRoutes).map((id) => ({
+            id,
+            name: DEST_NAME(id),
+            speeds,
+          })),
+          // Completed by Xebra's relayer; Circle does not deliver there. Standard only.
+          ...(evmSendsToStellar(source, deps.evmRoutes)
+            ? [
+                {
+                  id: "stellar" as const,
+                  name: DEST_NAME("stellar"),
+                  speeds: ["standard"] as Speed[],
+                },
+              ]
+            : []),
+        ],
       });
     }
     if (deps.suiStellar.enabled) {
@@ -511,7 +525,7 @@ export function createService(deps: Deps, now: () => number = Date.now) {
    * gets the burn; Xebra's flat fee is paid beside it. `minBurn` is what the relayer completes.
    */
   function relayedToStellar(
-    from: "sui" | "solana" | "aptos",
+    from: Exclude<SourceId, "stellar">,
     amount: bigint,
     minBurn: bigint,
     maximum: bigint | null,
@@ -707,6 +721,11 @@ export function createService(deps: Deps, now: () => number = Date.now) {
     }
 
     if (q.from === "solana") return solanaOptions(q.to, q.amount);
+    if (q.to === "stellar" && q.from !== "stellar") {
+      // An EVM chain into Stellar: no Circle fee, Standard only; Xebra's relayer completes it from
+      // a 1 USDC burn. Never through the wrapper, whose burn cannot name Stellar's forwarder.
+      return relayedToStellar(q.from, q.amount, RELAYED_MIN_UNITS, null);
+    }
 
     const health = await circleFor(q.from, q.to, opensAccount);
     if (q.from === "stellar") {
@@ -823,11 +842,45 @@ export function createService(deps: Deps, now: () => number = Date.now) {
     return option.priced;
   }
 
+  /**
+   * An EVM burn into Stellar, read from Circle's attestation and Stellar's mint record, or null when
+   * it is not one (a burn Circle forwards is answered from Circle's delivery record instead).
+   */
+  async function evmStellarStatus(chain: EvmChainId, tx: string): Promise<TransferStatus | null> {
+    if (!evmSendsToStellar(chain, deps.evmRoutes) || !deps.stellarInboundStatus) return null;
+    if (!/^0x[0-9a-f]{64}$/.test(tx)) return null;
+    const answer = await deps.stellarInboundStatus(tx, EVM_CHAINS[chain].cctpDomainId);
+    if (!answer) {
+      throw new ApiError(
+        "upstream_unavailable",
+        "Circle's status could not be read just now. That does not mean the transfer failed. Try again shortly.",
+      );
+    }
+    const circleState = String(answer.state ?? "unknown");
+    if (circleState !== "complete" || typeof answer.refusal === "string") return null;
+    return {
+      state: answer.delivered === true ? "delivered" : "needs_claim",
+      chain,
+      tx,
+      deliveryTx: null,
+      reason: null,
+      claimUrl:
+        answer.delivered === true
+          ? null
+          : `${deps.siteUrl}/claim?tx=${tx}&src=${EVM_CHAINS[chain].cctpDomainId}`,
+      circleState,
+    };
+  }
+
   async function transferStatus(r: { chain: SourceId; tx: string }): Promise<TransferStatus> {
     if (r.chain === "sui") return suiStatus(r.tx.trim());
     if (r.chain === "solana") return solanaStatus(r.tx.trim());
     if (r.chain === "aptos") {
       const stellar = await aptosStellarStatus(r.tx.trim().toLowerCase());
+      if (stellar) return stellar;
+    }
+    if (r.chain !== "stellar" && r.chain !== "aptos" && isEvmChainId(r.chain)) {
+      const stellar = await evmStellarStatus(r.chain, r.tx.trim().toLowerCase());
       if (stellar) return stellar;
     }
     return circleStatus(r.chain, r.tx.trim().toLowerCase());
@@ -1217,16 +1270,20 @@ export function createService(deps: Deps, now: () => number = Date.now) {
 
     // An EVM source: through Xebra's wrapper where the quote priced one, else straight to Circle.
     const source = EVM_CHAINS[r.from];
-    const via = priced.evmVia ?? null;
+    const toStellar = r.to === "stellar";
+    const via = toStellar ? null : (priced.evmVia ?? null);
     const plan = priced.evm;
-    if (!plan) throw new Error("an EVM quote without its fee plan");
-    const burnRecipient: BurnRecipient = solana
-      ? {
-          kind: "solana",
-          tokenAccount: bytesToHex(solana.tokenAccount),
-          createAccountFor: opensAccount ? bytesToHex(solana.owner) : undefined,
-        }
-      : recipient;
+    if (!plan && !toStellar) throw new Error("an EVM quote without its fee plan");
+    const burnRecipient: BurnRecipient = toStellar
+      ? // Mint recipient and caller both Circle's Stellar forwarder, the hook naming the account.
+        stellarBurnRecipient(recipient)
+      : solana
+        ? {
+            kind: "solana",
+            tokenAccount: bytesToHex(solana.tokenAccount),
+            createAccountFor: opensAccount ? bytesToHex(solana.owner) : undefined,
+          }
+        : recipient;
     const { balance, allowance } = await upstream(`The sender's USDC on ${source.name}`, () =>
       b.evmUsdc(source, sender, via ? via.address : source.tokenMessengerAddress),
     );
@@ -1242,12 +1299,14 @@ export function createService(deps: Deps, now: () => number = Date.now) {
       source,
       from: sender,
       destination: {
-        cctpDomainId: routeDestination(r.to as Exclude<DestId, "stellar">).cctpDomainId,
+        cctpDomainId: toStellar
+          ? STELLAR_CCTP_DOMAIN
+          : routeDestination(r.to as Exclude<DestId, "stellar">).cctpDomainId,
       },
       recipient: burnRecipient,
       // The burn; Xebra's flat fee, if any, leaves the wallet in its own step after it.
-      amount: plan.burn,
-      maxFee: plan.maxFee,
+      amount: plan ? plan.burn : burnAmount,
+      maxFee: plan ? plan.maxFee : 0n,
       finality: priced.quote.speed === "fast" ? FINALITY.fast : FINALITY.standard,
       via,
       allowance,
@@ -1257,13 +1316,20 @@ export function createService(deps: Deps, now: () => number = Date.now) {
     }).map((step) =>
       // Circle's fee is fixed into the burn when it is built. If an approval comes first and takes
       // longer than the quote lasts, build again: the approval stands, and the burn is re-priced.
-      step.id === "burn"
-        ? {
-            ...step,
-            expiresAt: priced.quote.expiresAt,
-            description: `${step.description} Signed after ${priced.quote.expiresAt}, build it again first: the fee may have moved.`,
-          }
-        : step,
+      step.id !== "burn"
+        ? step
+        : toStellar
+          ? {
+              ...step,
+              // No Circle fee to move: the burn does not go stale.
+              expiresAt: null,
+              description: `Burn USDC on ${source.name}; Circle attests it, and the mint on Stellar is completed by Xebra's relayer or by POST /v1/claims.`,
+            }
+          : {
+              ...step,
+              expiresAt: priced.quote.expiresAt,
+              description: `${step.description} Signed after ${priced.quote.expiresAt}, build it again first: the fee may have moved.`,
+            },
     );
     if (flat) {
       steps.push(
@@ -1500,8 +1566,17 @@ export function createService(deps: Deps, now: () => number = Date.now) {
 
     // A Solana or Aptos burn into Stellar: the forwarder's mint, paid for by the payer's Stellar
     // account.
-    if ((onSolana || r.chain === "aptos") && destinationDomain === STELLAR_CCTP_DOMAIN) {
-      const claimStellar = onSolana ? b.solanaStellarClaim : b.aptosClaim;
+    const fromEvm = r.chain !== "stellar" && isEvmChainId(r.chain);
+    if ((onSolana || r.chain === "aptos" || fromEvm) && destinationDomain === STELLAR_CCTP_DOMAIN) {
+      const evmClaim = b.stellarInboundClaim;
+      const claimStellar = onSolana
+        ? b.solanaStellarClaim
+        : r.chain === "aptos"
+          ? b.aptosClaim
+          : evmClaim && fromEvm
+            ? (t: string, p: string) =>
+                evmClaim(t, p, EVM_CHAINS[r.chain as EvmChainId].cctpDomainId)
+            : undefined;
       if (!claimStellar) {
         throw new ApiError(
           "route_unavailable",
