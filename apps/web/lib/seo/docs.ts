@@ -61,7 +61,7 @@ If delivery ever fails, the transfer is still attested and anyone can finish it:
 
 ## Fees
 
-From Stellar, Xebra charges ${xebraFeeRule}, and Circle's delivery fee is paid out of that, not added on top. ${arcViaWrapper ? "From Arc the same rule applies." : "From Arc there is no Xebra fee, only Circle's delivery fee."} Details on [fees](/fees).
+From Stellar, Xebra charges ${xebraFeeRule}, and Circle's delivery fee is paid out of that, not added on top. ${arcViaWrapper ? "From Arc the same rule applies." : "From Arc, Xebra takes a flat 0.10 USDC plus Circle's delivery fee."} From every other chain without a Xebra contract, Xebra takes a flat 0.10 USDC (0.05 where the recipient claims the transfer), paid beside the burn. Details on [fees](/fees).
 
 ## Safety
 
@@ -155,7 +155,7 @@ The only other cost is the Stellar network fee, a fraction of a cent in XLM. Eac
 ${
   arcViaWrapper
     ? `Transfers out of Arc go through Xebra's contract on Arc with the same rule: **${xebraFeeRule}**, with Circle's delivery fee paid out of it.`
-    : "There is **no Xebra fee** on transfers out of Arc: your wallet calls Circle directly. You pay Circle's delivery fee, usually a few cents, which is taken out of the amount."
+    : "Transfers out of Arc call Circle directly. Xebra takes a **flat 0.10 USDC**, paid in its own step after the burn, and you pay Circle's delivery fee, usually a few cents, out of the amount."
 } Arc charges gas in USDC, a fraction of a cent per transaction; keep a few cents in the wallet.
 
 ## Circle's delivery fee
@@ -328,7 +328,7 @@ function routeDoc(r: RouteInfo, all: RouteInfo[]): Doc {
     path: `/bridge/${r.slug}`,
     markdownPath: md(`/bridge/${r.slug}`),
     title,
-    description: `Send native USDC from ${from} to ${to} over Circle's CCTP. ${viaXebra ? `Fee ${FEES.bps / 100}%, at least ${FEES.minFeeUsdc} USDC` : "No Xebra fee"}, usually minutes, and claimable if delivery fails.`,
+    description: `Send native USDC from ${from} to ${to} over Circle's CCTP. ${viaXebra ? `Fee ${FEES.bps / 100}%, at least ${FEES.minFeeUsdc} USDC` : "Xebra fee 0.10 USDC"}, usually minutes, and claimable if delivery fails.`,
     section: "routes",
     breadcrumb: [
       { name: "Xebra", path: "/" },

@@ -20,7 +20,7 @@ import { notFound } from "../../../../lib/sui-stellar/config";
  * To Stellar there is no fee: Circle charges nothing for Standard and nothing is forwarded. The
  * recipient's trustline is checked first, and our relayer (or the owner) completes the mint.
  *
- * Xebra takes nothing on these routes: there is no Xebra contract on Solana.
+ * Xebra's flat fee is decided here and paid in the burn's own transaction (`lib/server/flat-fee`).
  *
  * The transaction comes back co-signed by a one-time event-account key (Solana's CCTP program
  * writes the message into a new account whose key must sign) and simulated against mainnet, so a
