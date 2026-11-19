@@ -26,7 +26,7 @@ export const DEFAULT_BASE_URL = "https://api.xebra.exchange";
 export class XebraApiError extends Error {
   constructor(
     readonly status: number,
-    readonly code: ApiErrorCode | "network_error" | "timeout" | "invalid_response",
+    readonly code: ApiErrorCode | "network_error" | "timeout" | "invalid_response" | "wait_timeout",
     readonly detail: string,
     /** The problem's other fields, such as `minimum`, `maximum`, `have` and `need`. */
     readonly extra: Record<string, unknown> = {},
@@ -192,9 +192,11 @@ export function createXebraClient(opts: XebraClientOptions = {}) {
     ): Promise<TransferStatus> {
       const interval = o.intervalMs ?? 5_000;
       const deadline = Date.now() + (o.timeoutMs ?? 30 * 60_000);
+      let lastStatus: TransferStatus | null = null;
       for (;;) {
         try {
           const status = await getTransfer(chain, tx, o.signal);
+          lastStatus = status;
           if (SETTLED.has(status.state)) return status;
         } catch (err) {
           const transient =
@@ -208,8 +210,9 @@ export function createXebraClient(opts: XebraClientOptions = {}) {
         if (Date.now() + interval > deadline) {
           throw new XebraApiError(
             0,
-            "timeout",
+            "wait_timeout",
             "The transfer did not settle in time; it may still. Ask again later.",
+            lastStatus ? { lastStatus: lastStatus.state } : {},
           );
         }
         await sleep(interval, o.signal);
